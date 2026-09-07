@@ -1,0 +1,21 @@
+# ============================================================
+# Docker build context ignore rules
+# ============================================================
+.git
+.gitignore
+.env
+.env.example
+.state.json
+.monitor.pid
+monitor.log
+data/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.omo/
+.codegraph/
+README.md
+run.sh
+setup-autostart.sh
+pokemon-monitor.service

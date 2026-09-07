@@ -1,0 +1,75 @@
+{
+  // ============================================================
+  // Template konfigurasi pencarian.
+  // Ini JSONC (JSON with Comments) — hanya untuk referensi.
+  // Untuk dipakai, salin ke config.json lalu HAPUS semua komentar //.
+  // ============================================================
+
+  "api_url": "https://coordinates-api.pokemongopro.com/search",
+
+  // Interval polling acak, dalam menit. Script tidur antara dua nilai ini.
+  "interval_min": 10,
+  "interval_max": 60,
+
+  "payload": {
+    "pvp_mode": false,
+    "pvp_league": "great",       // "great" | "ultra" | "master"
+    "pvp_top_rank": null,
+    "pvp_include_pre_evolutions": true,
+    "pvp_min_cp": null,
+
+    // Daftar pokemon yang dipantau. Kosong = ambil SEMUA pokemon.
+    // Contoh filter: [1, 25, 143]
+    "pokemon_ids": [],
+    // Bentuk/form spesifik. Kosong = semua bentuk.
+    // Contoh: [{ "pokemon_id": 25, "form_id": 949 }]
+    "species_forms": [],
+
+    "location": null,            // nama lokasi (opsional)
+    "cp_min": null,
+    "cp_max": null,
+    "level_min": null,
+    "level_max": null,
+    "iv_mode": "percent",        // "percent" | "raw"
+    "iv_percent_min": 0,
+    "iv_percent_max": null,
+    "raw_iv_atk": null,
+    "raw_iv_def": null,
+    "raw_iv_sta": null,
+    "sizes": [],
+    "forms": [],
+    "gender": null,
+    "boosted": null,
+
+    // Cuaca. Nilai yang valid:
+    //   ""        = Any (tidak filter)
+    //   "boosted" = Hanya pokemon yang sedang boosted
+    //   "1"       = Sunny
+    //   "2"       = Rainy
+    //   "3"       = Partly Cloudy
+    //   "4"       = Cloudy
+    //   "5"       = Windy
+    //   "6"       = Snow
+    //   "7"       = Fog
+    "weather_id": null,
+
+    "min_ttl": null,
+
+    // Urutan hasil. Nilai yang valid:
+    //   "DSP"      = Despawn (longest)
+    //   "CP"       = CP (highest)
+    //   "IV"       = IV % (highest)
+    //   "LEVEL"    = Level (highest)
+    //   "DISTANCE" = Distance (nearest)
+    "sort": "IV",
+
+    "center_lat": null,
+    "center_lng": null,
+    "radius_km": null,
+
+    // Daftar pokemon/bentuk yang DIKECUALIKAN dari hasil.
+    "blacklist_pokemon_ids": [],
+    "blacklist_species_forms": [],
+    "blacklist_forms": []
+  }
+}

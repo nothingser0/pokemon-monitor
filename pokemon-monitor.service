@@ -1,0 +1,25 @@
+[Unit]
+Description=Pokemon GO Monitor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Jalankan sebagai user non-root (ubah sesuai user Anda, mis. 'pokemon' atau 'pi')
+User=pokemon
+Group=pokemon
+WorkingDirectory=/opt/data/pokemon-monitor-standalone
+ExecStart=/usr/bin/python3 /opt/data/pokemon-monitor-standalone/monitor.py
+Restart=always
+RestartSec=60
+StandardOutput=append:/opt/data/pokemon-monitor-standalone/monitor.log
+StandardError=append:/opt/data/pokemon-monitor-standalone/monitor.log
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
