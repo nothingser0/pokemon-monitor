@@ -1,25 +1,22 @@
 #!/usr/bin/env python3
 """
 Pokemon GO Coordinate Monitor
-Monitors coordinates-api.pokemongopro.com and notifies Discord when Pokemon appear.
 
 Usage:
-  python3 monitor.py                    # Run monitoring (loops forever)
-  python3 monitor.py --once             # Run monitoring once and exit
-  python3 monitor.py --config           # Show current config path
-
-Edit config:
-  - Credentials: edit .env (WEBHOOK_URL, BEARER_TOKEN, etc.)
-  - Filters/payload: edit config.json (pokemon_ids, species_forms, etc.)
+  python3 monitor.py           # Run monitoring (loops forever)
+  python3 monitor.py --once    # Run once and exit
+  python3 monitor.py --config  # Show config paths
 """
 
 import json
 import os
 import random
+import socket
 import sys
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from urllib.parse import urlparse
 
 import requests
 
@@ -28,18 +25,13 @@ try:
 except ImportError:  # pragma: no cover - optional dependency fallback
     load_dotenv = None
 
-# Script directory
 SCRIPT_DIR = Path(__file__).parent
-
-# Default .env location (used to discover credential overrides)
 DEFAULT_ENV_FILE = SCRIPT_DIR / ".env"
 
 
 def load_env():
-    """Load environment variables from .env file if available."""
     if load_dotenv is not None:
         load_dotenv(DEFAULT_ENV_FILE)
-    # Fallback: manual parsing if python-dotenv is not installed
     elif DEFAULT_ENV_FILE.exists():
         for line in DEFAULT_ENV_FILE.read_text().splitlines():
             line = line.strip()
@@ -53,29 +45,21 @@ def load_env():
 
 
 def _path_from_env(env_name, default):
-    """Resolve a path from an environment variable, falling back to a default."""
     raw = os.environ.get(env_name)
     if raw:
         return Path(raw)
     return SCRIPT_DIR / default
 
 
-# Load .env early so path overrides (CONFIG_FILE, STATE_FILE) are honored too
 load_env()
 
-# Config file path (overridable via CONFIG_FILE env / .env)
 CONFIG_FILE = _path_from_env("CONFIG_FILE", "config.json")
 ENV_FILE = _path_from_env("ENV_FILE", ".env")
-
-# State file to track notified Pokemon
 STATE_FILE = _path_from_env("STATE_FILE", ".state.json")
-
-# Maximum Pokemon to include per notification batch
 MAX_EMBEDS_PER_BATCH = 10
 
 
 def get_env(key, default=None):
-    """Read an environment variable, raising if a required one is missing."""
     value = os.environ.get(key)
     if value is None or value == "":
         return default
@@ -83,7 +67,6 @@ def get_env(key, default=None):
 
 
 def load_config():
-    """Load config from file or create a default (without secrets)."""
     if CONFIG_FILE.exists():
         try:
             return json.loads(CONFIG_FILE.read_text())
@@ -98,7 +81,6 @@ def load_config():
 
 
 def build_default_config():
-    """Return the default config structure (secrets live in .env, not here)."""
     return {
         "api_url": "https://coordinates-api.pokemongopro.com/search",
         "interval_min": 10,
@@ -140,7 +122,6 @@ def build_default_config():
 
 
 def load_state():
-    """Load notified Pokemon IDs from state file."""
     if STATE_FILE.exists():
         try:
             return set(json.loads(STATE_FILE.read_text()))
@@ -150,40 +131,47 @@ def load_state():
 
 
 def save_state(notified_ids):
-    """Save notified Pokemon IDs to state file."""
     STATE_FILE.write_text(json.dumps(list(notified_ids)))
 
 
 def fetch_pokemon(api_url, bearer_token, payload):
-    """Fetch Pokemon from API."""
     headers = {
         "Authorization": f"Bearer {bearer_token}",
         "Content-Type": "application/json",
     }
-    resp = requests.post(api_url, json=payload, headers=headers, timeout=30)
+    
+    parsed = urlparse(api_url)
+    hostname = parsed.hostname
+    fallback_ip = "46.225.53.252"
+    
+    try:
+        socket.gethostbyname(hostname)
+        target_url = api_url
+    except (socket.gaierror, socket.herror, OSError):
+        print(f"⚠️  DNS resolution failed for {hostname}, using fallback IP {fallback_ip}", file=sys.stderr)
+        target_url = api_url.replace(hostname, fallback_ip)
+        headers["Host"] = hostname
+    
+    resp = requests.post(target_url, json=payload, headers=headers, timeout=30)
     resp.raise_for_status()
     return resp.json()
 
 
 def parse_despawn(despawn_str):
-    """Parse a despawn timestamp into a timezone-aware datetime (or None)."""
     if not despawn_str:
         return None
 
-    # Try ISO 8601 with offset like 2024-01-01T12:00:00+07:00
     try:
         return datetime.fromisoformat(despawn_str)
     except ValueError:
         pass
 
-    # Handle 'Z' suffix (UTC)
     if despawn_str.endswith("Z"):
         try:
             return datetime.fromisoformat(despawn_str[:-1]).replace(tzinfo=timezone.utc)
         except ValueError:
             pass
 
-    # Last resort: python-dateutil
     try:
         from dateutil import parser
         return parser.parse(despawn_str)
@@ -192,17 +180,10 @@ def parse_despawn(despawn_str):
 
 
 def build_countdown(despawn_str):
-    """Return a Discord relative timestamp (<t:...:R>) for a despawn time.
-
-    Discord renders this as a live countdown ("in 23 minutes", "5 minutes ago")
-    and keeps it up to date automatically. Falls back to "Unknown" if the
-    despawn string can't be parsed.
-    """
     despawn_dt = parse_despawn(despawn_str)
     if not despawn_dt:
         return "Unknown"
 
-    # Discord timestamps must be UTC-aware epoch seconds
     if despawn_dt.tzinfo is None:
         despawn_dt = despawn_dt.replace(tzinfo=timezone.utc)
     unix_ts = int(despawn_dt.timestamp())
@@ -210,7 +191,6 @@ def build_countdown(despawn_str):
 
 
 def build_embed(p):
-    """Build a Discord embed dict for a single Pokemon result."""
     pokemon_name = p.get("pokemon_name", "Unknown")
     pokemon_id = p.get("pokemon_id", "?")
     gender = p.get("gender", "Unknown")
@@ -224,7 +204,6 @@ def build_embed(p):
     fast_move = p.get("fast_move", "Unknown")
     charge_move = p.get("charge_move", "Unknown")
 
-    # Build reveal button URL
     if reveal_code:
         reveal_url = f"https://coordinates-api.pokemongopro.com/reveal/{reveal_code}"
     else:
@@ -237,11 +216,11 @@ def build_embed(p):
     weather_emoji = " ☀️" if weather else ""
 
     if iv >= 90:
-        color = 0x00FF00  # Green (high IV)
+        color = 0x00FF00
     elif iv >= 80:
-        color = 0xFFAA00  # Orange (good IV)
+        color = 0xFFAA00
     else:
-        color = 0x3498DB  # Blue (normal)
+        color = 0x3498DB
 
     image_url = (
         "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/"
@@ -265,7 +244,6 @@ def build_embed(p):
 
 
 def send_discord(webhook_url, pokemon_list):
-    """Send Discord notifications with rich embeds."""
     if not pokemon_list:
         return
 
@@ -285,7 +263,6 @@ def send_discord(webhook_url, pokemon_list):
                 file=sys.stderr,
             )
 
-    # Notify how many remain beyond the batch limit
     remaining = len(pokemon_list) - len(batch)
     if remaining > 0:
         try:
@@ -299,7 +276,6 @@ def send_discord(webhook_url, pokemon_list):
 
 
 def random_interval(config):
-    """Return a random sleep interval (in seconds) between min and max minutes."""
     min_minutes = int(config.get("interval_min", 10))
     max_minutes = int(config.get("interval_max", 60))
     if min_minutes > max_minutes:
@@ -309,7 +285,6 @@ def random_interval(config):
 
 
 def check_once(config, webhook_url, bearer_token):
-    """Perform a single monitoring cycle."""
     print(f"🔍 Checking Pokemon API at {datetime.now()}")
 
     payload = config.get("payload", {})
@@ -347,10 +322,6 @@ def check_once(config, webhook_url, bearer_token):
 
 
 def main():
-    """Main entry point."""
-    # .env is already loaded at module import time (see load_env() call above).
-
-    # Handle --config flag
     if len(sys.argv) > 1 and sys.argv[1] == "--config":
         print(f"📝 Config file: {CONFIG_FILE}")
         print(f"📝 Env file: {ENV_FILE}")
@@ -361,7 +332,6 @@ def main():
 
     run_once = "--once" in sys.argv
 
-    # Load credentials from environment
     webhook_url = get_env("WEBHOOK_URL")
     bearer_token = get_env("BEARER_TOKEN")
 
@@ -372,12 +342,10 @@ def main():
 
     config = load_config()
 
-    # Single-run mode
     if run_once:
         check_once(config, webhook_url, bearer_token)
         return
 
-    # Continuous loop mode
     print("🔄 Starting continuous monitoring (Ctrl+C to stop)")
     while True:
         try:

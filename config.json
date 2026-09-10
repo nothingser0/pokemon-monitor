@@ -1,7 +1,7 @@
 {
   "api_url": "https://coordinates-api.pokemongopro.com/search",
-  "interval_min": 10,
-  "interval_max": 60,
+  "interval_min": 60,
+  "interval_max": 120,
   "payload": {
     "pvp_mode": false,
     "pvp_league": "great",
