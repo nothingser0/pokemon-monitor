@@ -1,7 +1,7 @@
 # ============================================================
 # Pokemon GO Coordinate Monitor - Docker Compose
 # ============================================================
-# Usage di STB:
+# Usage:
 #   docker compose pull && docker compose up -d    (pakai image dari GHCR)
 # Atau build sendiri:
 #   docker compose up -d --build

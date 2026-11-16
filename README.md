@@ -1,6 +1,6 @@
 # Pokemon GO Coordinate Monitor (Go Edition)
 
-Pemantau koordinat Pokemon dari `coordinates-api.pokemongopro.com` dan pengirim notifikasi Discord Embed yang sangat ringan, dioptimalkan khusus untuk perangkat dengan sumber daya terbatas seperti **STB (Set-Top Box)** via Docker.
+Pemantau koordinat Pokemon dari `coordinates-api.pokemongopro.com` dan pengirim notifikasi Discord Embed yang sangat ringan, efisien, dan siap dijalankan menggunakan **Docker**.
 
 ## Fitur Utama
 
@@ -8,7 +8,7 @@ Pemantau koordinat Pokemon dari `coordinates-api.pokemongopro.com` dan pengirim 
 - ⚙️ **Konfigurasi Rapi**:
   - Kredensial & Interval diatur lewat file `.env`.
   - Filter payload (daftar Pokemon ID pilihan, species forms, dll.) tersimpan di `config.json`.
-- 🔁 **Interval Acak Hemat Resource**: Interval monitoring acak (default `30` hingga `120` menit) agar tidak membebani STB atau memicu rate limit API.
+- 🔁 **Interval Acak Hemat Resource**: Interval monitoring acak (default `30` hingga `120` menit) agar hemat resource dan tidak memicu rate limit API.
 - 💾 **State Persistence**: Menyimpan encounter ID di volume `./data/.state.json` agar Pokemon yang sama tidak dinotifikasi berulang kali.
 - 🛑 **Graceful Shutdown**: Mendukung sinyal `SIGTERM` / `SIGINT` (Ctrl+C / `docker stop`) agar kontainer langsung berhenti seketika tanpa harus menunggu timer sleep selesai.
 
@@ -31,11 +31,11 @@ INTERVAL_MAX=120
 ```
 
 ### b. File `config.json` (Filter Payload)
-File `config.json` sudah diatur dengan daftar `pokemon_ids` dan `species_forms` favorit Anda. Jika ingin mengubah daftar Pokemon di kemudian hari, Anda cukup mengedit `config.json`.
+File `config.json` sudah diatur dengan daftar `pokemon_ids` dan `species_forms` pilihan Anda. Jika ingin mengubah daftar Pokemon di kemudian hari, Anda cukup mengedit `config.json`.
 
 ---
 
-## 2. Menjalankan di STB (Docker Compose)
+## 2. Menjalankan dengan Docker Compose
 
 Pastikan direktori `./data` memiliki izin akses:
 
@@ -43,24 +43,24 @@ Pastikan direktori `./data` memiliki izin akses:
 mkdir -p data && chmod -R 777 data
 ```
 
-### Opsi A: Langsung tarik image dari GHCR (Tanpa perlu build di STB - Rekomendasi)
+### Opsi A: Tarik image dari GHCR (Rekomendasi)
 ```bash
 # Tarik image pre-built multi-arch dari GitHub Container Registry
 docker compose pull
 
-# Jalankan
+# Jalankan di background
 docker compose up -d
 
 # Cek log
 docker compose logs -f
 ```
 
-### Opsi B: Build lokal di STB
+### Opsi B: Build lokal
 ```bash
 docker compose up -d --build
 ```
 
-> **Untuk CasaOS / ZimaOS / Portainer di STB**:
+> **Untuk CasaOS / ZimaOS / Portainer**:
 > Anda cukup mengimpor file `docker-compose.yml` dan menyertakan file `.env`.
 
 ---
@@ -71,6 +71,6 @@ docker compose up -d --build
 # Test cek 1x:
 go run -buildvcs=false . --once
 
-# Compile binary native STB (ARM64):
+# Compile binary native (contoh Linux ARM64):
 GOOS=linux GOARCH=arm64 go build -buildvcs=false -ldflags="-s -w" -o pokemon-monitor .
 ```
