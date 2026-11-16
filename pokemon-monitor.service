@@ -5,7 +5,6 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-# Jalankan sebagai user non-root (ubah sesuai user Anda, mis. 'pokemon' atau 'pi')
 User=pokemon
 Group=pokemon
 WorkingDirectory=/opt/data/pokemon-monitor-standalone
@@ -15,7 +14,6 @@ RestartSec=60
 StandardOutput=append:/opt/data/pokemon-monitor-standalone/monitor.log
 StandardError=append:/opt/data/pokemon-monitor-standalone/monitor.log
 
-# Hardening
 NoNewPrivileges=true
 ProtectSystem=full
 ProtectHome=true
