@@ -26,14 +26,9 @@ RUN apk --no-cache add ca-certificates tzdata
 
 WORKDIR /app
 
-# Create non-root user and persistent data dir
-RUN adduser -D -u 1000 appuser \
-    && mkdir -p /app/data \
-    && chown -R appuser:appuser /app
+RUN mkdir -p /app/data
 
 COPY --from=builder /build/pokemon-monitor .
-
-USER appuser
 
 ENV STATE_FILE=/app/data/.state.json
 
