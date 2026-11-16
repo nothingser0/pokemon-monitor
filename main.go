@@ -529,9 +529,11 @@ func main() {
 	fmt.Println("🔄 Starting continuous monitoring (Ctrl+C to stop)")
 
 	for {
-		checkOnce(cfg, webhookURL, bearerToken, stateFile)
+		// Reload config dynamically so edits to config.json or environment take effect immediately
+		currentCfg := buildConfig()
+		checkOnce(currentCfg, webhookURL, bearerToken, stateFile)
 
-		interval := getRandomInterval(cfg)
+		interval := getRandomInterval(currentCfg)
 		fmt.Printf("--- Next check in %d minutes ---\n", int(interval.Minutes()))
 
 		select {
