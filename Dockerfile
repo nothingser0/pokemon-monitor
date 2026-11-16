@@ -1,26 +1,40 @@
 # ============================================================
-# Pokemon GO Coordinate Monitor - Docker Image
+# Pokemon GO Coordinate Monitor - Docker Image (Multi-Arch)
 # ============================================================
-FROM python:3.11-slim
 
-# Set working directory
+# Stage 1: Build binary using native Go cross-compilation ($BUILDPLATFORM)
+FROM --platform=$BUILDPLATFORM golang:alpine AS builder
+
+ARG TARGETOS
+ARG TARGETARCH
+
+WORKDIR /build
+
+COPY go.mod ./
+COPY main.go ./
+
+# Fast multi-arch cross-compilation without QEMU overhead
+RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} \
+    go build -buildvcs=false -ldflags="-s -w" -o pokemon-monitor .
+
+# Stage 2: Minimal runtime image
+FROM alpine:3.20
+
+# ca-certificates for secure HTTPS requests (API & Discord)
+# tzdata for proper timezone parsing (e.g. Asia/Jakarta)
+RUN apk --no-cache add ca-certificates tzdata
+
 WORKDIR /app
 
-# Install dependencies first (better layer caching)
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy application code
-COPY monitor.py .
-COPY config.json .
-
-# Create a non-root user and a writable data directory (for state file)
-RUN useradd --create-home --uid 1000 appuser \
+# Create non-root user and persistent data dir
+RUN adduser -D -u 1000 appuser \
     && mkdir -p /app/data \
-    && chown -R appuser:appuser /app/data
+    && chown -R appuser:appuser /app
 
-# Run as non-root user
+COPY --from=builder /build/pokemon-monitor .
+
 USER appuser
 
-# Run the monitor in continuous loop mode
-CMD ["python", "monitor.py"]
+ENV STATE_FILE=/app/data/.state.json
+
+ENTRYPOINT ["./pokemon-monitor"]

@@ -1,28 +1,24 @@
 # ============================================================
 # Pokemon GO Coordinate Monitor - Docker Compose
 # ============================================================
-# Usage:
+# Usage di STB:
+#   docker compose pull && docker compose up -d    (pakai image dari GHCR)
+# Atau build sendiri:
 #   docker compose up -d --build
-#   docker compose logs -f
-#   docker compose down
-#
-# Credentials (WEBHOOK_URL, BEARER_TOKEN) are loaded from .env
-# (docker compose automatically reads .env in this directory for
-#  variable substitution, and env_file passes it into the container.)
 
 services:
   pokemon-monitor:
+    image: ghcr.io/nothingser0/pokemon-monitor:latest
     build: .
     container_name: pokemon-monitor
     restart: unless-stopped
     env_file:
       - .env
     environment:
-      # State file lives in the mounted volume so it persists across restarts
       STATE_FILE: /app/data/.state.json
       TZ: Asia/Jakarta
     volumes:
-      # Filter/payload config (read-only mount)
+      # Filter/payload config
       - ./config.json:/app/config.json:ro
-      # Persistent state (notified Pokemon IDs)
+      # Persistent state (ID pokemon yang sudah dinotifikasi)
       - ./data:/app/data
